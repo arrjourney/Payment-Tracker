@@ -168,7 +168,7 @@ export default function App() {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
               <Wallet className="w-6 h-6 text-blue-600" />
-              LoanTracker
+              Payment Tracker
             </h1>
             <button 
               onClick={() => setIsAddingLoan(true)}
@@ -453,7 +453,7 @@ export default function App() {
                 <Wallet className="w-12 h-12 text-zinc-300" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-zinc-900">Welcome to LoanTracker</h2>
+                <h2 className="text-2xl font-bold text-zinc-900">Welcome to Payment Tracker</h2>
                 <p className="text-zinc-500 max-w-sm mx-auto mt-2">Select a loan from the sidebar or create a new one to start tracking your balances and interest.</p>
               </div>
               <button
