@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Information about a tracked loan.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "description": "The UID of the user who owns this loan." },
+        "name": { "type": "string" },
+        "principal": { "type": "number" },
+        "interestRate": { "type": "number" },
+        "frequency": { "type": "string", "enum": ["daily", "weekly", "monthly", "yearly"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "lastInterestAppliedDate": { "type": "string", "format": "date-time" },
+        "currentBalance": { "type": "number" },
+        "color": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "principal", "interestRate", "frequency", "startDate", "currentBalance"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "A payment made towards a loan.",
+      "type": "object",
+      "properties": {
+        "loanId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["loanId", "ownerId", "amount", "date"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Private user profiles."
+    },
+    "loans/{loanId}": {
+      "schema": "Loan",
+      "description": "Main loan documents."
+    },
+    "loans/{loanId}/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Subcollection for payments."
+    }
+  }
+}

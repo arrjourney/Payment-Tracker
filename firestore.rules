@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'displayName', 'createdAt']) &&
+             data.keys().size() == 3 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.displayName is string && data.displayName.size() <= 128 &&
+             data.createdAt is string; // Simplified for draft
+    }
+
+    function isValidLoan(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'principal', 'interestRate', 'frequency', 'startDate', 'lastInterestAppliedDate', 'currentBalance', 'color', 'updatedAt']) &&
+             data.keys().size() == 10 &&
+             data.ownerId == request.auth.uid &&
+             data.name is string && data.name.size() <= 128 &&
+             data.principal is number && data.principal >= 0 &&
+             data.interestRate is number && data.interestRate >= 0 &&
+             data.frequency in ['daily', 'weekly', 'monthly', 'yearly'] &&
+             data.startDate is string &&
+             data.lastInterestAppliedDate is string &&
+             data.currentBalance is number &&
+             data.color is string && data.color.size() <= 64 &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['loanId', 'ownerId', 'amount', 'date']) &&
+             data.keys().size() == 4 &&
+             data.loanId is string &&
+             data.ownerId == request.auth.uid &&
+             data.amount is number && data.amount >= 0 &&
+             data.date is string;
+    }
+
+    // --- Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email']);
+    }
+
+    match /loans/{loanId} {
+      allow get: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidLoan(incoming()) && isValidId(loanId);
+      allow update: if isSignedIn() && existing().ownerId == request.auth.uid && 
+                    isValidLoan(incoming()) &&
+                    // Actions: Update Balance or interest params
+                    incoming().diff(existing()).affectedKeys().hasAny(['currentBalance', 'lastInterestAppliedDate', 'name', 'principal', 'interestRate', 'frequency', 'color', 'updatedAt']);
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      match /payments/{paymentId} {
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow get: if isSignedIn() && existing().ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidPayment(incoming()) && 
+                      isValidId(paymentId) &&
+                      get(/databases/$(database)/documents/loans/$(loanId)).data.ownerId == request.auth.uid;
+        allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+      }
+    }
+  }
+}
