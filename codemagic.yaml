@@ -4,6 +4,8 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
+      groups:
+        - apple_credentials
       node: latest
       xcode: latest
       cocoapods: default
