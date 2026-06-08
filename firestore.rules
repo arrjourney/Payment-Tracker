@@ -30,11 +30,11 @@ service cloud.firestore {
     // --- Validation Blueprints ---
 
     function isValidUser(data) {
-      return data.keys().hasAll(['email']) &&
-             data.keys().hasOnly(['email', 'displayName', 'createdAt']) &&
+      return data.keys().hasAll(['email', 'displayName', 'createdAt']) &&
+             data.keys().size() == 3 &&
              data.email is string && data.email.size() <= 256 &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
-             (!('createdAt' in data) || data.createdAt is string);
+             data.displayName is string && data.displayName.size() <= 128 &&
+             data.createdAt is string && data.createdAt.size() <= 64;
     }
 
     function isValidLoan(data) {
@@ -45,21 +45,20 @@ service cloud.firestore {
              data.principal is number && data.principal >= 0 &&
              data.interestRate is number && data.interestRate >= 0 &&
              data.frequency in ['daily', 'weekly', 'monthly', 'yearly'] &&
-             data.startDate is timestamp &&
-             data.lastInterestAppliedDate is timestamp &&
+             data.startDate is string && data.startDate.size() <= 64 &&
+             data.lastInterestAppliedDate is string && data.lastInterestAppliedDate.size() <= 64 &&
              data.currentBalance is number &&
              data.color is string && data.color.size() <= 64 &&
-             data.updatedAt is timestamp &&
              data.updatedAt == request.time;
     }
 
     function isValidPayment(data) {
       return data.keys().hasAll(['loanId', 'ownerId', 'amount', 'date']) &&
              data.keys().size() == 4 &&
-             data.loanId is string &&
+             data.loanId is string && data.loanId.size() <= 128 &&
              data.ownerId == request.auth.uid &&
              data.amount is number && data.amount >= 0 &&
-             data.date is timestamp;
+             data.date is string && data.date.size() <= 64;
     }
 
     // --- Rules ---
@@ -73,29 +72,22 @@ service cloud.firestore {
 
     match /loans/{loanId} {
       allow get: if isSignedIn() && existing().ownerId == request.auth.uid;
-      allow list: if isSignedIn() &&
-                    request.query.limit <= 100 &&
-                    request.query.filters.size() == 1 &&
-                    request.query.filters[0].field == 'ownerId' &&
-                    request.query.filters[0].value == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && isValidLoan(incoming()) && isValidId(loanId);
       allow update: if isSignedIn() && existing().ownerId == request.auth.uid && 
-                    isValidLoan(incoming()) &&
-                    incoming().ownerId == existing().ownerId &&
-                    // Actions: Update Balance or interest params
-                    incoming().diff(existing()).affectedKeys().hasAny(['currentBalance', 'lastInterestAppliedDate', 'name', 'principal', 'interestRate', 'frequency', 'color', 'updatedAt']);
+                    isValidLoan(incoming()) && (
+                      // Action Component 1: Edit Settings
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'principal', 'interestRate', 'frequency', 'currentBalance', 'updatedAt'])) ||
+                      // Action Component 2: Apply Payment / Accrue Interest
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['currentBalance', 'lastInterestAppliedDate', 'updatedAt']))
+                    );
       allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
 
       match /payments/{paymentId} {
-        allow list: if isSignedIn() &&
-                      request.query.limit <= 100 &&
-                      request.query.filters.size() == 1 &&
-                      request.query.filters[0].field == 'ownerId' &&
-                      request.query.filters[0].value == request.auth.uid;
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow get: if isSignedIn() && existing().ownerId == request.auth.uid;
         allow create: if isSignedIn() && isValidPayment(incoming()) && 
                       isValidId(paymentId) &&
-                      incoming().loanId == loanId &&
                       get(/databases/$(database)/documents/loans/$(loanId)).data.ownerId == request.auth.uid;
         allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
       }

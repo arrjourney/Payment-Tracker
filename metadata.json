@@ -1,5 +1,5 @@
 {
-  "name": "GS Payment Tracker",
+  "name": "Payment Tracker",
   "description": "A simple tool to track loans, interest, and repayments with color-coded status.",
   "requestFramePermissions": []
 }
