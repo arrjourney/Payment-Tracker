@@ -1,0 +1,72 @@
+workflows:
+  ios-capacitor-workflow:
+    name: iOS Capacitor App Store Workflow
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      node: latest
+      xcode: latest
+      cocoapods: default
+      vars:
+        # Defaults for a standard Capacitor iOS project
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.arjourney.paymenttracker"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - name: Build web assets
+        script: |
+          npm run build
+      - name: Initialize capacitor ios project
+        script: |
+          # Add the native ios platform if it has not been committed to git yet
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+      - name: Copy and sync web assets to capacitor ios
+        script: |
+          npx cap sync ios
+      - name: Install CocoaPods
+        script: |
+          cd ios/App && pod install
+      - name: Set up code signing
+        script: |
+          # Initialize the keychain for secure signing
+          keychain initialize
+          
+          # Retrieve certificates from App Store Connect. 
+          # Note: This requires you to set your credentials (APP_STORE_CONNECT_API_KEY, 
+          # APP_STORE_CONNECT_KEY_IDENTIFIER, and APP_STORE_CONNECT_ISSUER_ID)
+          # in the Codemagic dashboard under Environment Variables.
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --project-type ios --create
+          
+          # Add certificates to keychain
+          keychain add-certificates
+      - name: Increment build number
+        script: |
+          # Increment build version based on the Codemagic build run number
+          cd ios/App
+          agvtool new-version -all $(($BUILD_NUMBER))
+      - name: Build iOS App (.ipa)
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - arjourney@gmail.com
+        notify:
+          success: true
+          failure: true
