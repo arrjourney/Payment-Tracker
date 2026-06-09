@@ -4,6 +4,12 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
+      groups:
+        # Codemagic requires your UI environment credentials to be part of a Group.
+        # 1. In your Codemagic UI (Application settings > Environment variables),
+        #    ensure all your Apple Keys are added under a group.
+        # 2. Change this name ('apple_credentials') to match your Group Name exactly.
+        - apple_credentials
       node: latest
       xcode: latest
       cocoapods: default
