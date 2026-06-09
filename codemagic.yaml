@@ -35,9 +35,6 @@ workflows:
       - name: Copy and sync web assets to capacitor ios
         script: |
           npx cap sync ios
-      - name: Install CocoaPods
-        script: |
-          cd ios/App && pod install
       - name: Set up code signing
         script: |
           # Initialize the keychain for secure signing
