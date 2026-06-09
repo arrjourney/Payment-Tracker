@@ -43,6 +43,9 @@ workflows:
           npx cap sync ios
       - name: Set up code signing
         script: |
+          # Map truncated environment variable if it's used in the Codemagic dashboard
+          export APP_STORE_CONNECT_KEY_IDENTIFIER="${APP_STORE_CONNECT_KEY_IDENTIFIER:-$APP_STORE_CONNECT_KEY_IDENTI}"
+          
           # Initialize the keychain for secure signing
           keychain initialize
           
