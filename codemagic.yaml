@@ -53,7 +53,7 @@ workflows:
           # Note: This requires you to set your credentials (APP_STORE_CONNECT_API_KEY, 
           # APP_STORE_CONNECT_KEY_IDENTIFIER, and APP_STORE_CONNECT_ISSUER_ID)
           # in the Codemagic dashboard under Environment Variables.
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --project-type ios --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           
           # Add certificates to keychain
           keychain add-certificates
